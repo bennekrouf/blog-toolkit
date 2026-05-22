@@ -1,6 +1,6 @@
 ; Blog Manager — Windows Installer
 ; Build: iscc /DMyAppVersion=X.Y.Z installer\installer.iss
-; Output: dist\blog-manager-setup.exe
+; Output: dist\blog-toolkit-setup.exe
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.1.0"
@@ -8,8 +8,8 @@
 
 #define MyAppName      "Blog Manager"
 #define MyAppPublisher "Mayorana"
-#define MyAppURL       "https://github.com/Bennekrouf/blog-manager"
-#define MyAppExeName   "blog-manager.exe"
+#define MyAppURL       "https://github.com/Bennekrouf/blog-toolkit"
+#define MyAppExeName   "blog-toolkit.exe"
 
 [Setup]
 AppId={{C3A72F1B-8E4D-4B9C-A1F6-D7E5C2B08A34}
@@ -23,7 +23,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist
-OutputBaseFilename=blog-manager-setup
+OutputBaseFilename=blog-toolkit-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -49,7 +49,7 @@ Name: "installdeps"; \
   Flags: checkedonce
 
 [Files]
-Source: "..\target\release\blog-manager.exe";   DestDir: "{app}"; Flags: ignoreversion
+Source: "..\target\release\blog-toolkit.exe";   DestDir: "{app}"; Flags: ignoreversion
 Source: "..\target\release\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists('..\target\release\WebView2Loader.dll')
 Source: "..\scripts\setup-windows.ps1";         DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md";                         DestDir: "{app}"; Flags: ignoreversion isreadme

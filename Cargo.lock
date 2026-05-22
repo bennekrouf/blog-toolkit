@@ -409,8 +409,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "blog-manager"
-version = "0.1.0"
+name = "blog-toolkit"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",

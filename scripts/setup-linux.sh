@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-linux.sh — one-time setup for blog-manager on Linux (Debian/Ubuntu/Fedora/Arch)
+# setup-linux.sh — one-time setup for blog-toolkit on Linux (Debian/Ubuntu/Fedora/Arch)
 #
 # Installs: WebKitGTK runtime (required by Dioxus desktop), Node.js 20
 # Already-installed tools are skipped automatically.
@@ -92,14 +92,14 @@ fi
 
 # ── Desktop shortcut ──────────────────────────────────────────────────────────
 BINARY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DESKTOP_FILE="/usr/share/applications/blog-manager.desktop"
-if [[ -f "$BINARY_DIR/blog-manager" && ! -f "$DESKTOP_FILE" ]]; then
+DESKTOP_FILE="/usr/share/applications/blog-toolkit.desktop"
+if [[ -f "$BINARY_DIR/blog-toolkit" && ! -f "$DESKTOP_FILE" ]]; then
   info "Creating .desktop launcher..."
   cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Name=Blog Manager
 Comment=Blog post queue manager for Cvenom
-Exec=$BINARY_DIR/blog-manager
+Exec=$BINARY_DIR/blog-toolkit
 Icon=text-editor
 Terminal=false
 Type=Application
@@ -110,4 +110,4 @@ fi
 
 echo ""
 echo "Setup complete."
-echo "Run: $BINARY_DIR/blog-manager"
+echo "Run: $BINARY_DIR/blog-toolkit"

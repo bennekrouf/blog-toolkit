@@ -6,7 +6,7 @@ default_platform = "desktop"
 title = "Blog Manager"
 
 [bundle]
-identifier = "com.mayorana.blog-manager"
+identifier = "com.mayorana.blog-toolkit"
 publisher = "Mayorana"
 icon = ["assets/icon.png"]
 short_description = "Blog post queue manager"

@@ -97,10 +97,10 @@ jobs:
 
       - name: Package tar.gz
         run: |
-          NAME="blog-manager-macos-arm64"
+          NAME="blog-toolkit-macos-arm64"
           DIST="dist/$NAME"
           mkdir -p "$DIST"
-          cp target/aarch64-apple-darwin/release/blog-manager "$DIST/"
+          cp target/aarch64-apple-darwin/release/blog-toolkit "$DIST/"
           cp scripts/setup-mac.sh "$DIST/"
           cp README.md "$DIST/"
           chmod +x "$DIST/setup-mac.sh"
@@ -110,10 +110,10 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: blog-manager-macos-arm64
+          name: blog-toolkit-macos-arm64
           path: |
-            blog-manager-macos-arm64.tar.gz
-            blog-manager-macos-arm64.tar.gz.sha256
+            blog-toolkit-macos-arm64.tar.gz
+            blog-toolkit-macos-arm64.tar.gz.sha256
 
   # ── Linux x86_64 ───────────────────────────────────────────────────────────
   build-linux:
@@ -151,22 +151,22 @@ jobs:
 
       - name: Package tar.gz
         run: |
-          NAME="blog-manager-linux-x86_64"
+          NAME="blog-toolkit-linux-x86_64"
           DIST="dist/$NAME"
           mkdir -p "$DIST"
-          cp target/x86_64-unknown-linux-gnu/release/blog-manager "$DIST/"
+          cp target/x86_64-unknown-linux-gnu/release/blog-toolkit "$DIST/"
           cp scripts/setup-linux.sh "$DIST/"
           cp README.md "$DIST/"
-          chmod +x "$DIST/setup-linux.sh" "$DIST/blog-manager"
+          chmod +x "$DIST/setup-linux.sh" "$DIST/blog-toolkit"
           tar -czf "$NAME.tar.gz" -C dist "$NAME"
           sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: blog-manager-linux-x86_64
+          name: blog-toolkit-linux-x86_64
           path: |
-            blog-manager-linux-x86_64.tar.gz
-            blog-manager-linux-x86_64.tar.gz.sha256
+            blog-toolkit-linux-x86_64.tar.gz
+            blog-toolkit-linux-x86_64.tar.gz.sha256
 
   # ── Windows x64 ────────────────────────────────────────────────────────────
   build-windows:
@@ -217,16 +217,16 @@ jobs:
           $version = "${{ github.ref_name }}".TrimStart("v")
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           & $iscc /DMyAppVersion=$version installer\installer.iss
-          $hash = (Get-FileHash dist\blog-manager-setup.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  blog-manager-setup.exe" | Out-File "dist\blog-manager-setup.exe.sha256" -Encoding ASCII
-          Write-Host "Installer: dist\blog-manager-setup.exe"
+          $hash = (Get-FileHash dist\blog-toolkit-setup.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  blog-toolkit-setup.exe" | Out-File "dist\blog-toolkit-setup.exe.sha256" -Encoding ASCII
+          Write-Host "Installer: dist\blog-toolkit-setup.exe"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: blog-manager-windows
+          name: blog-toolkit-windows
           path: |
-            dist\blog-manager-setup.exe
-            dist\blog-manager-setup.exe.sha256
+            dist\blog-toolkit-setup.exe
+            dist\blog-toolkit-setup.exe.sha256
 
   # ── GitHub Release ─────────────────────────────────────────────────────────
   release:
@@ -251,27 +251,27 @@ jobs:
           FILES=$(find artifacts -type f | tr '\n' ' ')
 
           gh release create "$TAG" \
-            --title "blog-manager $TAG" \
+            --title "blog-toolkit $TAG" \
             --notes "$(cat <<'EOF'
           ## Installation
 
           ### macOS (Apple Silicon)
           ```bash
-          curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/blog-manager-macos-arm64.tar.gz | tar xz
-          cd blog-manager-macos-arm64
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/blog-toolkit-macos-arm64.tar.gz | tar xz
+          cd blog-toolkit-macos-arm64
           ./setup-mac.sh
-          ./blog-manager
+          ./blog-toolkit
           ```
 
           ### Windows
-          Download **blog-manager-setup.exe** and run it — the installer handles Node.js and WebView2.
+          Download **blog-toolkit-setup.exe** and run it — the installer handles Node.js and WebView2.
 
           ### Linux (x86_64)
           ```bash
-          curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/blog-manager-linux-x86_64.tar.gz | tar xz
-          cd blog-manager-linux-x86_64
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/blog-toolkit-linux-x86_64.tar.gz | tar xz
+          cd blog-toolkit-linux-x86_64
           sudo ./setup-linux.sh
-          ./blog-manager
+          ./blog-toolkit
           ```
 
           > **Runtime requirement (Linux):** `libwebkit2gtk-4.1` — installed automatically by `setup-linux.sh`.

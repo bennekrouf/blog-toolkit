@@ -1,0 +1,12 @@
+[application]
+name = "Blog Manager"
+default_platform = "desktop"
+
+[web.app]
+title = "Blog Manager"
+
+[bundle]
+identifier = "com.mayorana.blog-manager"
+publisher = "Mayorana"
+icon = ["assets/icon.png"]
+short_description = "Blog post queue manager"

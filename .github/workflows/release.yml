@@ -231,6 +231,7 @@ jobs:
   # ── GitHub Release ─────────────────────────────────────────────────────────
   release:
     needs: [build-mac, build-linux, build-windows]
+    if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     permissions:
       contents: write

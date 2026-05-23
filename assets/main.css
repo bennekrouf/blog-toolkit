@@ -259,3 +259,40 @@ input:focus, textarea:focus { border-color: var(--primary); }
 .key-input-row { display: flex; gap: 6px; align-items: center; }
 .key-input-row input { flex: 1; }
 .btn-toggle-key { font-size: 14px; flex-shrink: 0; }
+
+/* ── Social posts section ────────── */
+.social-section {
+  margin-bottom: 24px; padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.social-heading {
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-muted); margin-bottom: 12px;
+}
+.social-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+}
+.social-card-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.social-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 4px;
+  background: #0a66c2; color: #fff; font-size: 11px; font-weight: 800;
+  flex-shrink: 0;
+}
+.social-icon-x { background: #000; font-size: 13px; }
+.social-card-header span:nth-child(2) {
+  font-size: 12px; font-weight: 600; color: var(--text); flex: 1;
+}
+.social-card-body {
+  font-size: 13px; color: var(--text); line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+}
+.btn-copy {
+  padding: 3px 10px; border: 1px solid var(--border); border-radius: 5px;
+  background: transparent; color: var(--text-muted); font-size: 11px;
+  font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.btn-copy:hover { background: var(--primary); color: #fff; border-color: var(--primary); }

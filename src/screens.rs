@@ -453,14 +453,35 @@ fn CenterPanel(
 
                             spawn(async move {
                                 *generating.write() = true;
-                                *status_msg.write() = "Generating…".to_string();
+                                *status_msg.write() = "Generating blog post…".to_string();
                                 match api::generate_post(&t, &s, &l, &provider, &api_key).await {
                                     Ok(body) => match api::save_to_queue(&project, &t, &s, &l, &body) {
                                         Ok(path) => {
-                                            *status_msg.write() = format!(
-                                                "Saved: {}",
-                                                path.split('/').last().unwrap_or("")
+                                            // Generate social media teasers
+                                            *status_msg.write() = "Generating social posts…".to_string();
+                                            let slug = path.split('/').last().unwrap_or("post")
+                                                .replace(".md", "");
+                                            let blog_url = format!(
+                                                "https://cvenom.com/{}/blog/{}",
+                                                l, slug
                                             );
+                                            match api::generate_social_posts(
+                                                &t, &s, &l, &blog_url, &provider, &api_key
+                                            ).await {
+                                                Ok(social) => {
+                                                    let _ = api::save_social(&path, &social);
+                                                    *status_msg.write() = format!(
+                                                        "Saved: {} + social posts",
+                                                        path.split('/').last().unwrap_or("")
+                                                    );
+                                                }
+                                                Err(e) => {
+                                                    *status_msg.write() = format!(
+                                                        "Saved: {} (social failed: {e})",
+                                                        path.split('/').last().unwrap_or("")
+                                                    );
+                                                }
+                                            }
                                             *posts.write() = load_posts(&project);
                                         }
                                         Err(e) => *status_msg.write() = format!("Save error: {e}"),
@@ -520,6 +541,8 @@ fn CenterPanel(
 #[component]
 fn PreviewPanel(selected: Signal<Option<Post>>) -> Element {
     let post = selected.read().clone();
+    let mut copied = use_signal(|| String::new());
+
     rsx! {
         div { class: "panel panel-right",
             if let Some(p) = post {
@@ -531,6 +554,52 @@ fn PreviewPanel(selected: Signal<Option<Post>>) -> Element {
                         "{p.status}"
                     }
                 }
+
+                // Social posts section
+                if let Some(social) = &p.social {
+                    div { class: "social-section",
+                        h3 { class: "social-heading", "Social Posts" }
+
+                        div { class: "social-card",
+                            div { class: "social-card-header",
+                                span { class: "social-icon", "in" }
+                                span { "LinkedIn" }
+                                button {
+                                    class: "btn-copy",
+                                    onclick: {
+                                        let text = social.linkedin.clone();
+                                        move |_| {
+                                            copy_to_clipboard(&text);
+                                            *copied.write() = "linkedin".to_string();
+                                        }
+                                    },
+                                    if copied.read().as_str() == "linkedin" { "Copied ✓" } else { "Copy" }
+                                }
+                            }
+                            p { class: "social-card-body", "{social.linkedin}" }
+                        }
+
+                        div { class: "social-card",
+                            div { class: "social-card-header",
+                                span { class: "social-icon social-icon-x", "𝕏" }
+                                span { "X / Twitter" }
+                                button {
+                                    class: "btn-copy",
+                                    onclick: {
+                                        let text = social.twitter.clone();
+                                        move |_| {
+                                            copy_to_clipboard(&text);
+                                            *copied.write() = "twitter".to_string();
+                                        }
+                                    },
+                                    if copied.read().as_str() == "twitter" { "Copied ✓" } else { "Copy" }
+                                }
+                            }
+                            p { class: "social-card-body", "{social.twitter}" }
+                        }
+                    }
+                }
+
                 div {
                     class: "preview-content blog-content",
                     dangerous_inner_html: "{md_to_html(&p.full_content)}",
@@ -542,6 +611,13 @@ fn PreviewPanel(selected: Signal<Option<Post>>) -> Element {
             }
         }
     }
+}
+
+fn copy_to_clipboard(text: &str) {
+    // Dioxus desktop runs in a webview — use JS clipboard API via document eval
+    let escaped = text.replace('\\', "\\\\").replace('`', "\\`").replace("${", "\\${");
+    let js = format!("navigator.clipboard.writeText(`{escaped}`)");
+    let _ = dioxus::prelude::document::eval(&js);
 }
 
 fn md_to_html(content: &str) -> String {

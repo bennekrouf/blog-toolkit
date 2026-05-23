@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+pub struct SocialPosts {
+    pub linkedin: String,
+    pub twitter: String,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Post {
     pub filename: String,
@@ -11,6 +17,7 @@ pub struct Post {
     pub status: String,
     pub body: String,
     pub full_content: String,
+    pub social: Option<SocialPosts>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -141,7 +148,13 @@ fn parse_post(path: PathBuf) -> Option<Post> {
     let lang        = extract_field(&frontmatter, "lang").unwrap_or_else(|| "fr".to_string());
     let status      = extract_field(&frontmatter, "status").unwrap_or_else(|| "draft".to_string());
 
-    Some(Post { filename, title, description, date, lang, status, body, full_content })
+    // Load sidecar social file if it exists
+    let social_path = path.with_extension("social.json");
+    let social = std::fs::read_to_string(&social_path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<SocialPosts>(&s).ok());
+
+    Some(Post { filename, title, description, date, lang, status, body, full_content, social })
 }
 
 fn extract_field(frontmatter: &str, key: &str) -> Option<String> {

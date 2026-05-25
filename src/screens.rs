@@ -1,5 +1,5 @@
 use crate::api;
-use crate::state::{AppConfig, LlmProvider, Post, ProjectPosts, load_posts};
+use crate::state::{AppConfig, LlmProvider, Post, ProjectConfig, ProjectPosts, load_posts};
 use dioxus::prelude::*;
 use pulldown_cmark::{Parser, Options, html};
 
@@ -79,6 +79,10 @@ fn MainLayout(
         div { class: "layout",
             div { class: "topbar",
                 span { class: "topbar-title", "Blog Manager" }
+                span { class: "topbar-project-name", {
+                    let p = config.read().project_path.clone().unwrap_or_default();
+                    ProjectConfig::load(&p).site_name
+                }}
                 span { class: "topbar-path",
                     { config.read().project_path.as_deref().unwrap_or("") }
                 }
@@ -454,16 +458,26 @@ fn CenterPanel(
                             spawn(async move {
                                 *generating.write() = true;
                                 *status_msg.write() = "Generating blog post…".to_string();
-                                match api::generate_post(&t, &s, &l, &provider, &api_key).await {
-                                    Ok(body) => match api::save_to_queue(&project, &t, &s, &l, &body) {
+                                let pcfg = ProjectConfig::load(&project);
+                                match api::generate_post(&t, &s, &l, &provider, &api_key, &pcfg).await {
+                                    Ok(body) => match api::save_to_queue(&project, &t, &s, &l, &body, &pcfg) {
                                         Ok(path) => {
                                             // Generate social media teasers
+                                            if !pcfg.social_enabled {
+                                                *status_msg.write() = format!(
+                                                    "Saved: {}",
+                                                    path.split('/').last().unwrap_or("")
+                                                );
+                                                *posts.write() = load_posts(&project);
+                                                *generating.write() = false;
+                                                return;
+                                            }
                                             *status_msg.write() = "Generating social posts…".to_string();
                                             let slug = path.split('/').last().unwrap_or("post")
                                                 .replace(".md", "");
                                             let blog_url = format!(
-                                                "https://cvenom.com/{}/blog/{}",
-                                                l, slug
+                                                "{}/{}/blog/{}",
+                                                pcfg.site_url, l, slug
                                             );
                                             match api::generate_social_posts(
                                                 &t, &s, &l, &blog_url, &provider, &api_key

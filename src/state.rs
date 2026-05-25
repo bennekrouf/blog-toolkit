@@ -106,6 +106,46 @@ impl AppConfig {
     }
 }
 
+/// Per-project config loaded from `blog-toolkit.yaml` at the project root.
+/// If absent, defaults to Cvenom-style settings.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ProjectConfig {
+    pub site_name: String,
+    pub site_url: String,
+    pub author: String,
+    pub default_tags: Vec<String>,
+    pub system_prompt: String,
+    pub social_enabled: bool,
+}
+
+impl Default for ProjectConfig {
+    fn default() -> Self {
+        Self {
+            site_name: "Cvenom".to_string(),
+            site_url: "https://cvenom.com".to_string(),
+            author: "Cvenom Team".to_string(),
+            default_tags: vec!["carrière".to_string(), "développement-professionnel".to_string()],
+            social_enabled: true,
+            system_prompt: "You are a professional blog writer for Cvenom, a career and CV platform. \
+                You write engaging, insightful posts about career development, workplace psychology, \
+                and professional growth. \
+                Your tone is empathetic, intelligent, and slightly provocative — like a good career coach. \
+                Avoid corporate jargon. Use concrete examples and reference established frameworks \
+                (Holland's theory, Person-Environment Fit, etc.) when relevant.".to_string(),
+        }
+    }
+}
+
+impl ProjectConfig {
+    pub fn load(project_path: &str) -> Self {
+        let path = PathBuf::from(project_path).join("blog-toolkit.yaml");
+        std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|s| serde_yaml::from_str(&s).ok())
+            .unwrap_or_default()
+    }
+}
+
 pub fn load_posts(project_path: &str) -> ProjectPosts {
     let root = PathBuf::from(project_path).join("content");
     ProjectPosts {

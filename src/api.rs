@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use crate::state::{LlmProvider, SocialPosts};
+use crate::state::{LlmProvider, ProjectConfig, SocialPosts};
 
 pub async fn generate_post(
     title: &str,
@@ -7,17 +7,11 @@ pub async fn generate_post(
     lang: &str,
     provider: &LlmProvider,
     api_key: &str,
+    project_config: &ProjectConfig,
 ) -> Result<String> {
     let lang_instruction = if lang == "fr" { "Write entirely in French." } else { "Write entirely in English." };
 
-    let system = format!(
-        "You are a professional blog writer for Cvenom, a career and CV platform. \
-        You write engaging, insightful posts about career development, workplace psychology, \
-        and professional growth. {lang_instruction} \
-        Your tone is empathetic, intelligent, and slightly provocative — like a good career coach. \
-        Avoid corporate jargon. Use concrete examples and reference established frameworks \
-        (Holland's theory, Person-Environment Fit, etc.) when relevant."
-    );
+    let system = format!("{} {lang_instruction}", project_config.system_prompt);
     let user = format!(
         "Write a blog post with this title: \"{title}\"\n\
         Summary / angle: {summary}\n\n\
@@ -131,16 +125,29 @@ pub async fn generate_social_posts(
         .context("Failed to parse social posts JSON from LLM response")
 }
 
-pub fn save_to_queue(project_path: &str, title: &str, summary: &str, lang: &str, body: &str) -> Result<String> {
+pub fn save_to_queue(
+    project_path: &str,
+    title: &str,
+    summary: &str,
+    lang: &str,
+    body: &str,
+    project_config: &ProjectConfig,
+) -> Result<String> {
     let slug = slugify(title);
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     let queue_dir = format!("{}/content/{}/queue", project_path, lang);
     std::fs::create_dir_all(&queue_dir)?;
 
+    let tags_str = project_config.default_tags.iter()
+        .map(|t| format!("\"{t}\""))
+        .collect::<Vec<_>>()
+        .join(", ");
+
     let content = format!(
         "---\ntitle: \"{title}\"\ndescription: \"{summary}\"\ndate: \"{today}\"\n\
-        author: \"Cvenom Team\"\ntags: [\"carrière\", \"développement-professionnel\"]\n\
-        lang: \"{lang}\"\nstatus: \"draft\"\n---\n\n# {title}\n\n{body}"
+        author: \"{}\"\ntags: [{tags_str}]\n\
+        lang: \"{lang}\"\nstatus: \"draft\"\n---\n\n# {title}\n\n{body}",
+        project_config.author
     );
     let path = format!("{}/{}.md", queue_dir, slug);
     std::fs::write(&path, content)?;

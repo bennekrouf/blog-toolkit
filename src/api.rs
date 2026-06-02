@@ -135,7 +135,8 @@ pub fn save_to_queue(
 ) -> Result<String> {
     let slug = slugify(title);
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let queue_dir = format!("{}/content/{}/queue", project_path, lang);
+    let (queue_path, _) = project_config.resolve_paths(project_path, lang);
+    let queue_dir = queue_path.to_string_lossy().to_string();
     std::fs::create_dir_all(&queue_dir)?;
 
     let tags_str = project_config.default_tags.iter()
@@ -161,9 +162,10 @@ pub fn save_social(md_path: &str, social: &SocialPosts) -> Result<()> {
     Ok(())
 }
 
-pub fn publish_post(project_path: &str, lang: &str, filename: &str) -> Result<()> {
-    let src = format!("{}/content/{}/queue/{}", project_path, lang, filename);
-    let dst_dir = format!("{}/content/{}/blog", project_path, lang);
+pub fn publish_post(project_path: &str, lang: &str, filename: &str, project_config: &ProjectConfig) -> Result<()> {
+    let (queue_path, blog_path) = project_config.resolve_paths(project_path, lang);
+    let src = queue_path.join(filename).to_string_lossy().to_string();
+    let dst_dir = blog_path.to_string_lossy().to_string();
     std::fs::create_dir_all(&dst_dir)?;
     let dst = format!("{}/{}", dst_dir, filename);
 
@@ -192,8 +194,9 @@ pub fn publish_post(project_path: &str, lang: &str, filename: &str) -> Result<()
     Ok(())
 }
 
-pub fn delete_queued(project_path: &str, lang: &str, filename: &str) -> Result<()> {
-    let path = format!("{}/content/{}/queue/{}", project_path, lang, filename);
+pub fn delete_queued(project_path: &str, lang: &str, filename: &str, project_config: &ProjectConfig) -> Result<()> {
+    let (queue_path, _) = project_config.resolve_paths(project_path, lang);
+    let path = queue_path.join(filename).to_string_lossy().to_string();
     std::fs::remove_file(&path)?;
     let social = path.replace(".md", ".social.json");
     let _ = std::fs::remove_file(social); // ignore if absent

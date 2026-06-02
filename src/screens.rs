@@ -336,7 +336,8 @@ fn PostItem(
                         onclick: move |e| {
                             e.stop_propagation();
                             let project = config.read().project_path.clone().unwrap_or_default();
-                            if api::publish_post(&project, &lang_pub, &post_pub.filename).is_ok() {
+                            let pcfg = ProjectConfig::load(&project);
+                            if api::publish_post(&project, &lang_pub, &post_pub.filename, &pcfg).is_ok() {
                                 *posts.write() = load_posts(&project);
                             }
                         },
@@ -347,7 +348,8 @@ fn PostItem(
                         onclick: move |e| {
                             e.stop_propagation();
                             let project = config.read().project_path.clone().unwrap_or_default();
-                            if api::delete_queued(&project, &lang_del, &post_del.filename).is_ok() {
+                            let pcfg = ProjectConfig::load(&project);
+                            if api::delete_queued(&project, &lang_del, &post_del.filename, &pcfg).is_ok() {
                                 *posts.write() = load_posts(&project);
                             }
                         },

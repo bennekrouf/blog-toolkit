@@ -8,6 +8,17 @@ pub struct SocialPosts {
     pub twitter: String,
 }
 
+/// A standalone LinkedIn post about a product/feature (not tied to a blog article).
+#[derive(Clone, Debug, PartialEq)]
+pub struct LinkedInPost {
+    pub filename: String,
+    pub topic: String,
+    pub lang: String,
+    pub status: String,
+    pub date: String,
+    pub body: String,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Post {
     pub filename: String,
@@ -27,11 +38,19 @@ pub struct ProjectPosts {
     pub queue_en: Vec<Post>,
     pub published_fr: Vec<Post>,
     pub published_en: Vec<Post>,
+    pub linkedin_queue_fr: Vec<LinkedInPost>,
+    pub linkedin_queue_en: Vec<LinkedInPost>,
+    pub linkedin_published_fr: Vec<LinkedInPost>,
+    pub linkedin_published_en: Vec<LinkedInPost>,
 }
 
 impl ProjectPosts {
     pub fn empty() -> Self {
-        Self { queue_fr: vec![], queue_en: vec![], published_fr: vec![], published_en: vec![] }
+        Self {
+            queue_fr: vec![], queue_en: vec![], published_fr: vec![], published_en: vec![],
+            linkedin_queue_fr: vec![], linkedin_queue_en: vec![],
+            linkedin_published_fr: vec![], linkedin_published_en: vec![],
+        }
     }
 }
 
@@ -195,6 +214,12 @@ impl ProjectConfig {
         (root.join("queue"), root.join("blog"))
     }
 
+    /// Paths for standalone LinkedIn posts: content/{lang}/linkedin/{queue,published}
+    pub fn resolve_linkedin_paths(&self, project_path: &str, lang: &str) -> (PathBuf, PathBuf) {
+        let root = PathBuf::from(project_path).join("content").join(lang).join("linkedin");
+        (root.join("queue"), root.join("published"))
+    }
+
     /// Get all detected languages, or default to ["fr", "en"].
     pub fn languages(&self) -> Vec<String> {
         if let Some(cp) = &self.content_paths {
@@ -210,12 +235,52 @@ pub fn load_posts(project_path: &str) -> ProjectPosts {
     let config = ProjectConfig::load(project_path);
     let (queue_fr, blog_fr) = config.resolve_paths(project_path, "fr");
     let (queue_en, blog_en) = config.resolve_paths(project_path, "en");
+    let (li_queue_fr, li_pub_fr) = config.resolve_linkedin_paths(project_path, "fr");
+    let (li_queue_en, li_pub_en) = config.resolve_linkedin_paths(project_path, "en");
     ProjectPosts {
         queue_fr: read_posts(&queue_fr),
         queue_en: read_posts(&queue_en),
         published_fr: read_posts(&blog_fr),
         published_en: read_posts(&blog_en),
+        linkedin_queue_fr: read_linkedin_posts(&li_queue_fr),
+        linkedin_queue_en: read_linkedin_posts(&li_queue_en),
+        linkedin_published_fr: read_linkedin_posts(&li_pub_fr),
+        linkedin_published_en: read_linkedin_posts(&li_pub_en),
     }
+}
+
+fn read_linkedin_posts(dir: &PathBuf) -> Vec<LinkedInPost> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return vec![] };
+    let mut posts: Vec<LinkedInPost> = entries
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("md"))
+        .filter_map(|e| parse_linkedin_post(e.path()))
+        .collect();
+    posts.sort_by(|a, b| b.date.cmp(&a.date));
+    posts
+}
+
+fn parse_linkedin_post(path: PathBuf) -> Option<LinkedInPost> {
+    let full_content = std::fs::read_to_string(&path).ok()?;
+    let filename = path.file_name()?.to_string_lossy().to_string();
+
+    let (frontmatter, body) = if full_content.starts_with("---") {
+        let rest = &full_content[3..];
+        if let Some(end) = rest.find("\n---") {
+            (rest[..end].to_string(), rest[end + 4..].trim_start_matches('\n').to_string())
+        } else {
+            (String::new(), full_content.clone())
+        }
+    } else {
+        (String::new(), full_content.clone())
+    };
+
+    let topic  = extract_field(&frontmatter, "topic").unwrap_or_else(|| filename.clone());
+    let date   = extract_field(&frontmatter, "date").unwrap_or_default();
+    let lang   = extract_field(&frontmatter, "lang").unwrap_or_else(|| "fr".to_string());
+    let status = extract_field(&frontmatter, "status").unwrap_or_else(|| "draft".to_string());
+
+    Some(LinkedInPost { filename, topic, lang, status, date, body })
 }
 
 /// Scan project directory to detect content folder structure.

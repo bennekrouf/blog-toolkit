@@ -1,7 +1,10 @@
 use crate::api;
-use crate::state::{AppConfig, LlmProvider, Post, ProjectConfig, ProjectPosts, load_posts};
+use crate::state::{AppConfig, LinkedInPost, LlmProvider, Post, ProjectConfig, ProjectPosts, load_posts};
 use dioxus::prelude::*;
 use pulldown_cmark::{Parser, Options, html};
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ContentMode { Blog, LinkedIn }
 
 // ── Root ─────────────────────────────────────────────────────────────────────
 
@@ -12,13 +15,31 @@ pub fn App() -> Element {
     let selected = use_signal(|| None::<Post>);
     let editor_mode = use_signal(|| false);
     let show_settings = use_signal(|| false);
+    let content_mode = use_signal(|| ContentMode::Blog);
+    let li_selected = use_signal(|| None::<LinkedInPost>);
+    let mut is_light = use_signal(|| false);
+
+    // Follow the OS light/dark setting on startup — CSS already defaults to
+    // this via a `prefers-color-scheme` media query, so this just keeps the
+    // toggle button's icon in sync with that initial state.
+    use_hook(|| {
+        spawn(async move {
+            if let Ok(prefers_light) = document::eval(
+                "return window.matchMedia('(prefers-color-scheme: light)').matches;"
+            ).await {
+                if let Some(v) = prefers_light.as_bool() {
+                    is_light.set(v);
+                }
+            }
+        });
+    });
 
     let has_project = config.read().project_path.is_some();
 
     rsx! {
         style { {include_str!("../assets/main.css")} }
         if has_project {
-            MainLayout { config, posts, selected, editor_mode, show_settings }
+            MainLayout { config, posts, selected, editor_mode, show_settings, content_mode, li_selected, is_light }
         } else {
             SetupScreen { config, posts }
         }
@@ -74,6 +95,9 @@ fn MainLayout(
     selected: Signal<Option<Post>>,
     editor_mode: Signal<bool>,
     show_settings: Signal<bool>,
+    content_mode: Signal<ContentMode>,
+    li_selected: Signal<Option<LinkedInPost>>,
+    mut is_light: Signal<bool>,
 ) -> Element {
     rsx! {
         div { class: "layout",
@@ -83,6 +107,18 @@ fn MainLayout(
                     let p = config.read().project_path.clone().unwrap_or_default();
                     ProjectConfig::load(&p).site_name
                 }}
+                div { class: "mode-tabs",
+                    button {
+                        class: if *content_mode.read() == ContentMode::Blog { "tab active" } else { "tab" },
+                        onclick: move |_| *content_mode.write() = ContentMode::Blog,
+                        "Blog"
+                    }
+                    button {
+                        class: if *content_mode.read() == ContentMode::LinkedIn { "tab active" } else { "tab" },
+                        onclick: move |_| *content_mode.write() = ContentMode::LinkedIn,
+                        "LinkedIn"
+                    }
+                }
                 span { class: "topbar-path",
                     { config.read().project_path.as_deref().unwrap_or("") }
                 }
@@ -107,6 +143,17 @@ fn MainLayout(
                     },
                     "Change folder"
                 }
+                // theme toggle
+                button {
+                    class: "btn-theme",
+                    title: if *is_light.read() { "Switch to dark mode" } else { "Switch to light mode" },
+                    onclick: move |_| {
+                        let next = !*is_light.read();
+                        is_light.set(next);
+                        document::eval(&format!("document.body.className = '{}';", if next { "light" } else { "dark" }));
+                    },
+                    if *is_light.read() { "🌙" } else { "☀" }
+                }
                 // gear icon button
                 button {
                     class: "btn-icon",
@@ -120,9 +167,15 @@ fn MainLayout(
             }
 
             div { class: "panels",
-                PostList { config, posts, selected }
-                CenterPanel { config, posts, selected, editor_mode }
-                PreviewPanel { selected }
+                if *content_mode.read() == ContentMode::Blog {
+                    PostList { config, posts, selected }
+                    CenterPanel { config, posts, selected, editor_mode }
+                    PreviewPanel { selected }
+                } else {
+                    LinkedInList { config, posts, li_selected }
+                    LinkedInCenterPanel { config, posts }
+                    LinkedInPreviewPanel { li_selected }
+                }
             }
 
             // Settings modal overlay
@@ -619,6 +672,263 @@ fn PreviewPanel(selected: Signal<Option<Post>>) -> Element {
                 div {
                     class: "preview-content blog-content",
                     dangerous_inner_html: "{md_to_html(&p.full_content)}",
+                }
+            } else {
+                div { class: "preview-empty",
+                    p { "Select a post or generate a new one to preview it here." }
+                }
+            }
+        }
+    }
+}
+
+// ── LinkedIn: left panel ─────────────────────────────────────────────────────
+
+#[component]
+fn LinkedInList(
+    config: Signal<AppConfig>,
+    posts: Signal<ProjectPosts>,
+    li_selected: Signal<Option<LinkedInPost>>,
+) -> Element {
+    let mut active_lang = use_signal(|| "fr".to_string());
+
+    let p = posts.read();
+    let lang = active_lang.read().clone();
+    let (queue, published) = if lang == "fr" {
+        (p.linkedin_queue_fr.clone(), p.linkedin_published_fr.clone())
+    } else {
+        (p.linkedin_queue_en.clone(), p.linkedin_published_en.clone())
+    };
+    drop(p);
+
+    rsx! {
+        div { class: "panel panel-left",
+            div { class: "lang-tabs",
+                button {
+                    class: if active_lang.read().as_str() == "fr" { "tab active" } else { "tab" },
+                    onclick: move |_| *active_lang.write() = "fr".to_string(),
+                    "FR"
+                }
+                button {
+                    class: if active_lang.read().as_str() == "en" { "tab active" } else { "tab" },
+                    onclick: move |_| *active_lang.write() = "en".to_string(),
+                    "EN"
+                }
+            }
+
+            div { class: "section-label", "Queue ({queue.len()})" }
+            for post in queue {
+                LinkedInItem {
+                    post: post.clone(),
+                    is_selected: li_selected.read().as_ref().map(|s| s.filename == post.filename).unwrap_or(false),
+                    config, posts, li_selected,
+                    active_lang,
+                    is_queue: true,
+                }
+            }
+
+            div { class: "section-label section-label-published", "Posted ({published.len()})" }
+            for post in published {
+                LinkedInItem {
+                    post: post.clone(),
+                    is_selected: li_selected.read().as_ref().map(|s| s.filename == post.filename).unwrap_or(false),
+                    config, posts, li_selected,
+                    active_lang,
+                    is_queue: false,
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn LinkedInItem(
+    post: LinkedInPost,
+    is_selected: bool,
+    config: Signal<AppConfig>,
+    posts: Signal<ProjectPosts>,
+    li_selected: Signal<Option<LinkedInPost>>,
+    active_lang: Signal<String>,
+    is_queue: bool,
+) -> Element {
+    let post_click = post.clone();
+    let post_pub   = post.clone();
+    let post_del   = post.clone();
+    let lang_pub   = active_lang.read().clone();
+    let lang_del   = lang_pub.clone();
+
+    rsx! {
+        div {
+            class: if is_selected { "post-item selected" } else { "post-item" },
+            onclick: move |_| *li_selected.write() = Some(post_click.clone()),
+
+            div { class: "post-item-title", "{post.topic}" }
+            div { class: "post-item-date",  "{post.date}" }
+
+            if is_queue {
+                div { class: "post-item-actions",
+                    button {
+                        class: "btn-micro btn-publish",
+                        title: "Mark as posted (after you've published it on LinkedIn)",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            let project = config.read().project_path.clone().unwrap_or_default();
+                            if api::publish_linkedin_post(&project, &lang_pub, &post_pub.filename).is_ok() {
+                                *posts.write() = load_posts(&project);
+                            }
+                        },
+                        "Mark posted"
+                    }
+                    button {
+                        class: "btn-micro btn-delete",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            let project = config.read().project_path.clone().unwrap_or_default();
+                            if api::delete_linkedin_queued(&project, &lang_del, &post_del.filename).is_ok() {
+                                *posts.write() = load_posts(&project);
+                            }
+                        },
+                        "✕"
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── LinkedIn: center panel — generate ────────────────────────────────────────
+
+#[component]
+fn LinkedInCenterPanel(
+    config: Signal<AppConfig>,
+    posts: Signal<ProjectPosts>,
+) -> Element {
+    let mut topic       = use_signal(|| String::new());
+    let mut angle       = use_signal(|| String::new());
+    let mut lang        = use_signal(|| "fr".to_string());
+    let mut generating  = use_signal(|| false);
+    let mut status_msg  = use_signal(|| String::new());
+
+    rsx! {
+        div { class: "panel panel-center",
+            div { class: "mode-tabs",
+                button { class: "tab active", "+ New LinkedIn post" }
+            }
+            div { class: "form",
+                div { class: "field",
+                    label { "Product / topic" }
+                    input {
+                        placeholder: "e.g. GitAgent — automated PR review",
+                        value: "{topic}",
+                        oninput: move |e| *topic.write() = e.value(),
+                    }
+                }
+                div { class: "field",
+                    label { "Angle / key points" }
+                    textarea {
+                        placeholder: "What problem it solves, standout feature, who it's for...",
+                        value: "{angle}",
+                        oninput: move |e| *angle.write() = e.value(),
+                        rows: "4",
+                    }
+                }
+                div { class: "field field-row",
+                    label { "Language" }
+                    div { class: "lang-tabs",
+                        button {
+                            class: if lang.read().as_str() == "fr" { "tab active" } else { "tab" },
+                            onclick: move |_| *lang.write() = "fr".to_string(),
+                            "FR"
+                        }
+                        button {
+                            class: if lang.read().as_str() == "en" { "tab active" } else { "tab" },
+                            onclick: move |_| *lang.write() = "en".to_string(),
+                            "EN"
+                        }
+                    }
+                }
+                if !status_msg.read().is_empty() {
+                    p { class: "status-msg", "{status_msg}" }
+                }
+                button {
+                    class: "btn-primary btn-generate",
+                    disabled: *generating.read() || topic.read().is_empty() || angle.read().is_empty(),
+                    onclick: move |_| {
+                        let t = topic.read().clone();
+                        let a = angle.read().clone();
+                        let l = lang.read().clone();
+                        let cfg = config.read().clone();
+                        let project = cfg.project_path.clone().unwrap_or_default();
+                        let provider = cfg.provider.clone();
+                        let api_key = cfg.resolved_api_key();
+
+                        if api_key.is_empty() {
+                            *status_msg.write() = "No API key configured — open ⚙ Settings.".to_string();
+                            return;
+                        }
+
+                        spawn(async move {
+                            *generating.write() = true;
+                            *status_msg.write() = "Generating LinkedIn post…".to_string();
+                            match api::generate_linkedin_post(&t, &a, &l, &provider, &api_key).await {
+                                Ok(body) => match api::save_linkedin_to_queue(&project, &t, &l, &body) {
+                                    Ok(path) => {
+                                        *status_msg.write() = format!(
+                                            "Saved: {}", path.split('/').last().unwrap_or("")
+                                        );
+                                        *posts.write() = load_posts(&project);
+                                        *topic.write() = String::new();
+                                        *angle.write() = String::new();
+                                    }
+                                    Err(e) => *status_msg.write() = format!("Save error: {e}"),
+                                },
+                                Err(e) => *status_msg.write() = format!("Error: {e}"),
+                            }
+                            *generating.write() = false;
+                        });
+                    },
+                    if *generating.read() { "Generating…" } else { "Generate & queue" }
+                }
+            }
+        }
+    }
+}
+
+// ── LinkedIn: right panel — preview ──────────────────────────────────────────
+
+#[component]
+fn LinkedInPreviewPanel(li_selected: Signal<Option<LinkedInPost>>) -> Element {
+    let post = li_selected.read().clone();
+    let mut copied = use_signal(|| false);
+
+    rsx! {
+        div { class: "panel panel-right",
+            if let Some(p) = post {
+                div { class: "preview-meta",
+                    span { class: "preview-lang-badge", "{p.lang.to_uppercase()}" }
+                    span { class: "preview-date", "{p.date}" }
+                    span {
+                        class: if p.status == "published" { "status-badge published" } else { "status-badge draft" },
+                        "{p.status}"
+                    }
+                }
+                div { class: "social-card",
+                    div { class: "social-card-header",
+                        span { class: "social-icon", "in" }
+                        span { "LinkedIn" }
+                        button {
+                            class: "btn-copy",
+                            onclick: {
+                                let text = p.body.clone();
+                                move |_| {
+                                    copy_to_clipboard(&text);
+                                    *copied.write() = true;
+                                }
+                            },
+                            if *copied.read() { "Copied ✓" } else { "Copy" }
+                        }
+                    }
+                    p { class: "social-card-body", white_space: "pre-wrap", "{p.body}" }
                 }
             } else {
                 div { class: "preview-empty",

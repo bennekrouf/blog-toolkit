@@ -1,6 +1,79 @@
 use anyhow::{Context, Result};
 use crate::state::{LlmProvider, ProjectConfig, SocialPosts};
 
+pub async fn generate_linkedin_post(
+    topic: &str,
+    angle: &str,
+    lang: &str,
+    provider: &LlmProvider,
+    api_key: &str,
+) -> Result<String> {
+    let lang_instruction = if lang == "fr" { "Write entirely in French." } else { "Write entirely in English." };
+
+    let system = format!(
+        "You write LinkedIn posts for a company page promoting Mayorana's products. \
+        {lang_instruction} Professional but engaging tone, concrete value proposition, \
+        no corporate fluff. Max 3 hashtags. 4-8 short paragraphs/lines, easy to skim."
+    );
+    let user = format!(
+        "Write a LinkedIn post about: \"{topic}\"\n\
+        Angle / key points: {angle}\n\n\
+        Output ONLY the post text, ready to publish (no markdown headers, no frontmatter)."
+    );
+
+    match provider {
+        LlmProvider::DeepSeek => call_deepseek(&system, &user, api_key).await,
+        LlmProvider::Claude   => call_claude(&system, &user, api_key).await,
+    }
+}
+
+pub fn save_linkedin_to_queue(
+    project_path: &str,
+    topic: &str,
+    lang: &str,
+    body: &str,
+) -> Result<String> {
+    let slug = slugify(topic);
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let queue_dir = std::path::PathBuf::from(project_path)
+        .join("content").join(lang).join("linkedin").join("queue");
+    std::fs::create_dir_all(&queue_dir)?;
+
+    let escaped_topic = topic.replace('"', "\\\"");
+    let content = format!(
+        "---\ntopic: \"{escaped_topic}\"\ndate: \"{today}\"\nlang: \"{lang}\"\nstatus: \"draft\"\n---\n\n{body}"
+    );
+    let path = queue_dir.join(format!("{slug}.md"));
+    std::fs::write(&path, content)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+pub fn publish_linkedin_post(project_path: &str, lang: &str, filename: &str) -> Result<()> {
+    let root = std::path::PathBuf::from(project_path).join("content").join(lang).join("linkedin");
+    let src = root.join("queue").join(filename);
+    let dst_dir = root.join("published");
+    std::fs::create_dir_all(&dst_dir)?;
+    let dst = dst_dir.join(filename);
+
+    let content = std::fs::read_to_string(&src)?;
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let updated = content.replace("status: \"draft\"", "status: \"published\"");
+    let updated = if let Some(line) = updated.lines().find(|l| l.starts_with("date:")) {
+        updated.replace(line, &format!("date: \"{today}\""))
+    } else { updated };
+
+    std::fs::write(&dst, updated)?;
+    std::fs::remove_file(&src)?;
+    Ok(())
+}
+
+pub fn delete_linkedin_queued(project_path: &str, lang: &str, filename: &str) -> Result<()> {
+    let path = std::path::PathBuf::from(project_path)
+        .join("content").join(lang).join("linkedin").join("queue").join(filename);
+    std::fs::remove_file(&path)?;
+    Ok(())
+}
+
 pub async fn generate_post(
     title: &str,
     summary: &str,

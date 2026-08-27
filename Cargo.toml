@@ -2,6 +2,7 @@
 name = "blog-toolkit"
 version = "0.1.2"
 edition = "2021"
+license-file = "LICENSE"
 
 [dependencies]
 dioxus = { version = "0.7", features = ["desktop"] }

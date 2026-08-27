@@ -10,7 +10,7 @@ Built with [Dioxus](https://dioxuslabs.com/) (Rust, runs natively on macOS, Linu
 
 ### macOS (Apple Silicon)
 ```bash
-curl -L https://github.com/Bennekrouf/blog-toolkit/releases/latest/download/blog-toolkit-macos-arm64.tar.gz | tar xz
+curl -L https://mayorana.ch/downloads/blog-toolkit/latest/blog-toolkit-macos-arm64.tar.gz | tar xz
 cd blog-toolkit-macos-arm64
 ./setup-mac.sh
 ./blog-toolkit
@@ -21,7 +21,7 @@ Download **blog-toolkit-setup.exe** from the [latest release](https://github.com
 
 ### Linux (x86_64)
 ```bash
-curl -L https://github.com/Bennekrouf/blog-toolkit/releases/latest/download/blog-toolkit-linux-x86_64.tar.gz | tar xz
+curl -L https://mayorana.ch/downloads/blog-toolkit/latest/blog-toolkit-linux-x86_64.tar.gz | tar xz
 cd blog-toolkit-linux-x86_64
 sudo ./setup-linux.sh
 ./blog-toolkit
@@ -168,3 +168,21 @@ Post body here...
 
 `status: "draft"` → invisible on the site.  
 `status: "published"` → picked up by `generate-blog-data.js` and shown on the blog.
+
+---
+
+## Licence
+
+Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+- **Free** for personal use, learning, research and hobby projects, and for
+  charities, schools, universities and government institutions.
+- **Commercial use requires a licence** — including a solo consultant using it
+  on client work, and an employee using it at their job.
+  [Get in touch](https://mayorana.ch/en/contact).
+
+This is deliberately not an OSI-approved open source licence: the source is
+public and readable, but companies using it for work buy a licence.
+
+The name, logo and icons are trademarks and are not covered by that licence —
+fork it and rebrand it. See [TRADEMARK.md](TRADEMARK.md).

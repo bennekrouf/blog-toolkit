@@ -264,7 +264,7 @@ jobs:
             "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
           ) | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $iscc) { Write-Error "ISCC.exe not found" }
-          $version = "${{ github.ref_name }}".TrimStart("v")
+          $version = "${{ needs.prepare.outputs.tag || github.ref_name }}".TrimStart("v")
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           & $iscc /DMyAppVersion=$version installer\installer.iss
 
@@ -321,7 +321,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ needs.prepare.outputs.tag || github.ref_name }}"
           FILES=$(find artifacts -type f | tr '\n' ' ')
 
           gh release create "$TAG" \
@@ -331,7 +331,7 @@ jobs:
 
           ### macOS (Apple Silicon)
           ```bash
-          curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/blog-toolkit-macos-arm64.tar.gz | tar xz
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.tag || github.ref_name }}/blog-toolkit-macos-arm64.tar.gz | tar xz
           cd blog-toolkit-macos-arm64
           ./setup-mac.sh
           ./blog-toolkit
@@ -342,7 +342,7 @@ jobs:
 
           ### Linux (x86_64)
           ```bash
-          curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/blog-toolkit-linux-x86_64.tar.gz | tar xz
+          curl -L https://github.com/${{ github.repository }}/releases/download/${{ needs.prepare.outputs.tag || github.ref_name }}/blog-toolkit-linux-x86_64.tar.gz | tar xz
           cd blog-toolkit-linux-x86_64
           sudo ./setup-linux.sh
           ./blog-toolkit

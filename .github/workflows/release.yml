@@ -74,7 +74,12 @@ jobs:
   build-mac:
     needs: [prepare]
     if: always() && !failure() && !cancelled()
-    runs-on: macos-latest
+    runs-on: macos-latest  # arm64 (Apple Silicon)
+    env:
+      SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+      APP_STORE_KEY:        ${{ secrets.APP_STORE_CONNECT_KEY }}
+      APP_STORE_KEY_ID:     ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_ISSUER_ID:  ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 
     steps:
       - uses: actions/checkout@v4
@@ -92,30 +97,191 @@ jobs:
             target
           key: release-macos-arm64-${{ hashFiles('Cargo.lock') }}
 
+      # ── Sanity-check required signing secrets up front ─────────────────────
+      - name: Check macOS signing secrets
+        env:
+          MACOS_CERTIFICATE:     ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD:     ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          missing=()
+          [ -z "${SIGNING_IDENTITY:-}"      ] && missing+=("MACOS_SIGNING_IDENTITY")
+          [ -z "${APP_STORE_KEY:-}"        ] && missing+=("APP_STORE_CONNECT_KEY")
+          [ -z "${APP_STORE_KEY_ID:-}"     ] && missing+=("APP_STORE_CONNECT_KEY_ID")
+          [ -z "${APP_STORE_ISSUER_ID:-}"  ] && missing+=("APP_STORE_CONNECT_ISSUER_ID")
+          [ -z "${MACOS_CERTIFICATE:-}"     ] && missing+=("MACOS_CERTIFICATE")
+          [ -z "${MACOS_CERTIFICATE_PWD:-}" ] && missing+=("MACOS_CERTIFICATE_PWD")
+          [ -z "${KEYCHAIN_PASSWORD:-}"     ] && missing+=("KEYCHAIN_PASSWORD")
+          if [ ${#missing[@]} -eq 0 ]; then
+            echo "All 7 macOS signing secrets present."
+            echo "HAVE_MAC_SECRETS=true" >> "$GITHUB_ENV"
+          elif [ ${#missing[@]} -eq 7 ]; then
+            echo "::error::No macOS signing secrets configured. This is the only \
+          macOS artifact, so skipping would ship a release with no Mac download at \
+          all. Set all seven in Settings → Secrets and variables → Actions."
+            exit 1
+          else
+            echo "::error::Incomplete macOS signing configuration. Missing: ${missing[*]}"
+            echo "Set all seven, or none at all to skip the macOS build."
+            exit 1
+          fi
+
+      # ── Import Developer ID cert into a temporary keychain ─────────────────
+      - name: Set up signing keychain
+        if: env.HAVE_MAC_SECRETS == 'true'
+        env:
+          MACOS_CERTIFICATE:     ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD:     ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+
+          security create-keychain  -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$MACOS_CERTIFICATE_PWD" \
+            -T /usr/bin/codesign
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
       - name: Build
         run: cargo build --release --target aarch64-apple-darwin
 
-      - name: Package tar.gz
+      # ── Sign the CLI binary with hardened runtime ──────────────────────────
+      - name: Codesign binary
+        if: env.HAVE_MAC_SECRETS == 'true'
         run: |
-          NAME="blog-toolkit-macos-arm64"
-          DIST="dist/$NAME"
-          mkdir -p "$DIST"
-          cp target/aarch64-apple-darwin/release/blog-toolkit "$DIST/"
-          cp scripts/setup-mac.sh "$DIST/"
-          cp README.md "$DIST/"
-          chmod +x "$DIST/setup-mac.sh"
-          tar -czf "$NAME.tar.gz" -C dist "$NAME"
-          shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
-          echo "Package: $NAME.tar.gz ($(du -sh "$NAME.tar.gz" | cut -f1))"
+          set -euo pipefail
+          BIN=target/aarch64-apple-darwin/release/blog-toolkit
+          codesign --force --options runtime --timestamp \
+            --entitlements .github/macos-entitlements.plist \
+            --sign "$SIGNING_IDENTITY" \
+            "$BIN"
+          codesign --verify --strict --verbose=2 "$BIN"
 
-      - uses: actions/upload-artifact@v4
+      # ── Generate icon.icns from assets/icon.png (1024x1024 source) ─────────
+      # No-op if the PNG is absent; bundle just ships icon-less in that case.
+      - name: Generate macOS .icns
+        if: env.HAVE_MAC_SECRETS == 'true'
+        run: |
+          set -euo pipefail
+          if [ ! -f assets/icon.png ]; then
+            echo "::warning::assets/icon.png not found — .app will ship without an icon."
+            exit 0
+          fi
+          ICONSET="$RUNNER_TEMP/icon.iconset"
+          mkdir -p "$ICONSET"
+          for size in 16 32 64 128 256 512 1024; do
+            sips -z $size $size assets/icon.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+          done
+          # Retina (@2x) variants — Apple expects these for crisp scaling.
+          cp "$ICONSET/icon_32x32.png"     "$ICONSET/icon_16x16@2x.png"
+          cp "$ICONSET/icon_64x64.png"     "$ICONSET/icon_32x32@2x.png"
+          cp "$ICONSET/icon_256x256.png"   "$ICONSET/icon_128x128@2x.png"
+          cp "$ICONSET/icon_512x512.png"   "$ICONSET/icon_256x256@2x.png"
+          cp "$ICONSET/icon_1024x1024.png" "$ICONSET/icon_512x512@2x.png"
+          rm "$ICONSET/icon_64x64.png" "$ICONSET/icon_1024x1024.png"
+          mkdir -p dist
+          iconutil -c icns "$ICONSET" -o dist/icon.icns
+
+      # ── Wrap binary in .app bundle, build signed + notarized + stapled DMG ─
+      - name: Build .app + .dmg
+        if: env.HAVE_MAC_SECRETS == 'true'
+        run: |
+          set -euo pipefail
+          BIN=target/aarch64-apple-darwin/release/blog-toolkit
+          VER="${GITHUB_REF_NAME#v}"
+          APP="dist/Blog Toolkit.app"
+
+          # 1. Construct the .app bundle around the cargo-built binary.
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp "$BIN" "$APP/Contents/MacOS/blog-toolkit"
+          chmod +x "$APP/Contents/MacOS/blog-toolkit"
+
+          ICON_KEY=""
+          if [ -f dist/icon.icns ]; then
+            cp dist/icon.icns "$APP/Contents/Resources/icon.icns"
+            ICON_KEY="<key>CFBundleIconFile</key><string>icon</string>"
+          fi
+
+          cat > "$APP/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleExecutable</key><string>blog-toolkit</string>
+            <key>CFBundleIdentifier</key><string>com.blog-toolkit.app</string>
+            <key>CFBundleName</key><string>Blog Toolkit</string>
+            <key>CFBundleDisplayName</key><string>Blog Toolkit</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$VER</string>
+            <key>CFBundleVersion</key><string>$VER</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+            $ICON_KEY
+          </dict></plist>
+          EOF
+
+          # 2. Re-sign the .app (sign nested binary first via --deep).
+          codesign --force --options runtime --timestamp \
+            --entitlements .github/macos-entitlements.plist \
+            --sign "$SIGNING_IDENTITY" \
+            --deep "$APP"
+          codesign --verify --strict --verbose=2 "$APP"
+
+          # 3. Stage and create .dmg.
+          mkdir -p dmg-staging
+          cp -R "$APP" dmg-staging/
+          ln -s /Applications dmg-staging/Applications
+          # The app spawns `node` for publishing, so setup-mac.sh has to stay
+          # reachable. A .dmg cannot execute it, but it can ship it alongside
+          # the .app for the user to run once.
+          cp scripts/setup-mac.sh dmg-staging/
+          cp README.md dmg-staging/
+          chmod +x dmg-staging/setup-mac.sh
+          hdiutil create -volname "Blog Toolkit" -srcfolder dmg-staging \
+            -ov -format UDZO dist/blog-toolkit-macos-arm64.dmg
+          codesign --force --timestamp --sign "$SIGNING_IDENTITY" \
+            dist/blog-toolkit-macos-arm64.dmg
+
+          # 4. Notarize the DMG (covers the binary inside via hash) and staple.
+          P8="$RUNNER_TEMP/AuthKey_${APP_STORE_KEY_ID}.p8"
+          echo "$APP_STORE_KEY" | base64 --decode > "$P8"
+
+          xcrun notarytool submit dist/blog-toolkit-macos-arm64.dmg \
+            --key "$P8" \
+            --key-id "$APP_STORE_KEY_ID" \
+            --issuer "$APP_STORE_ISSUER_ID" \
+            --wait
+          xcrun stapler staple dist/blog-toolkit-macos-arm64.dmg
+          xcrun stapler validate dist/blog-toolkit-macos-arm64.dmg
+
+          shasum -a 256 dist/blog-toolkit-macos-arm64.dmg \
+            > dist/blog-toolkit-macos-arm64.dmg.sha256
+
+      - name: Clean up keychain
+        if: always() && env.HAVE_MAC_SECRETS == 'true'
+        run: |
+          security delete-keychain "$KEYCHAIN_PATH" || true
+
+      - name: Upload artifact
+        if: env.HAVE_MAC_SECRETS == 'true'
+        uses: actions/upload-artifact@v4
         with:
           name: blog-toolkit-macos-arm64
           path: |
-            blog-toolkit-macos-arm64.tar.gz
-            blog-toolkit-macos-arm64.tar.gz.sha256
+            dist/blog-toolkit-macos-arm64.dmg
+            dist/blog-toolkit-macos-arm64.dmg.sha256
 
-  # ── Linux x86_64 ───────────────────────────────────────────────────────────
   build-linux:
     needs: [prepare]
     if: always() && !failure() && !cancelled()
@@ -349,7 +515,7 @@ jobs:
           BASE="${DL_BASE:-https://mayorana.ch/downloads/blog-toolkit}"
           BASE="${BASE%/}/$TAG"
 
-          MAC_TGZ="blog-toolkit-macos-arm64.tar.gz"
+          MAC_DMG="blog-toolkit-macos-arm64.dmg"
           WIN_EXE="blog-toolkit-setup.exe"
           LINUX_TGZ="blog-toolkit-linux-x86_64.tar.gz"
 
@@ -362,7 +528,7 @@ jobs:
             "tag": "$TAG",
             "released_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
-              "macos":   { "tarball": { "url": "$BASE/$MAC_TGZ",   "sha256": "$(sha "$MAC_TGZ")"   } },
+              "macos":   { "dmg":    { "url": "$BASE/$MAC_DMG",   "sha256": "$(sha "$MAC_DMG")"   } },
               "windows": { "exe_or_msi": { "url": "$BASE/$WIN_EXE", "sha256": "$(sha "$WIN_EXE")" } },
               "linux":   { "tarball": { "url": "$BASE/$LINUX_TGZ", "sha256": "$(sha "$LINUX_TGZ")" } }
             }
@@ -450,12 +616,11 @@ jobs:
           ## Installation
 
           ### macOS (Apple Silicon)
-          ```bash
-          curl -L https://mayorana.ch/downloads/blog-toolkit/${{ needs.prepare.outputs.tag || github.ref_name }}/blog-toolkit-macos-arm64.tar.gz | tar xz
-          cd blog-toolkit-macos-arm64
-          ./setup-mac.sh
-          ./blog-toolkit
-          ```
+          Download **blog-toolkit-macos-arm64.dmg**, open it, and drag **Blog Toolkit** to Applications.
+          Signed with Apple Developer ID and notarized — opens with a normal double-click.
+
+          Publishing shells out to Node.js. If you do not already have Node 18+, run the
+          `setup-mac.sh` included in the disk image once.
 
           ### Windows
           Download **blog-toolkit-setup.exe** and run it — the installer handles Node.js and WebView2.

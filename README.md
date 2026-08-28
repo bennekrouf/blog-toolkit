@@ -9,12 +9,11 @@ Built with [Dioxus](https://dioxuslabs.com/) (Rust, runs natively on macOS, Linu
 ## Installation
 
 ### macOS (Apple Silicon)
-```bash
-curl -L https://mayorana.ch/downloads/blog-toolkit/latest/blog-toolkit-macos-arm64.tar.gz | tar xz
-cd blog-toolkit-macos-arm64
-./setup-mac.sh
-./blog-toolkit
-```
+Download [`blog-toolkit-macos-arm64.dmg`](https://mayorana.ch/downloads/blog-toolkit/latest/blog-toolkit-macos-arm64.dmg), open it, and drag **Blog Toolkit** to Applications.
+Signed with Apple Developer ID and notarized — opens with a normal double-click.
+
+Publishing shells out to Node.js. If you do not already have Node 18+, run the
+`setup-mac.sh` included in the disk image once.
 
 ### Windows
 Download **blog-toolkit-setup.exe** from the [latest release](https://github.com/Bennekrouf/blog-toolkit/releases/latest) and run it. The installer handles Node.js and WebView2 automatically.

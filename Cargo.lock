@@ -413,10 +413,13 @@ name = "blog-toolkit"
 version = "0.1.8"
 dependencies = [
  "anyhow",
+ "base64",
  "chrono",
  "dioxus",
  "directories",
+ "dirs",
  "dotenv",
+ "getrandom 0.3.4",
  "pulldown-cmark",
  "reqwest",
  "rfd 0.15.4",

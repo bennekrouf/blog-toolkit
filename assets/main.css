@@ -436,3 +436,31 @@ input:focus, textarea:focus { border-color: var(--blue); background: var(--bg0);
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border); background-clip: content-box; }
+
+/* Usage-statistics notice, shown once along the bottom edge. */
+.consent-banner {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.25);
+}
+.consent-banner-text { flex: 1; }
+.consent-banner-text strong { font-weight: 700; }
+.consent-banner-button {
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.consent-banner-button:hover { background: rgba(255, 255, 255, 0.15); }

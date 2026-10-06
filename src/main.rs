@@ -1,6 +1,7 @@
 mod api;
 mod state;
 mod screens;
+mod telemetry;
 
 use dioxus::prelude::*;
 use screens::App;

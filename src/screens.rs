@@ -34,10 +34,55 @@ pub fn App() -> Element {
         });
     });
 
+    // Anonymous usage statistics. On by default, but only once the person has
+    // been told: `start` reads the opt-outs (including a shell profile's),
+    // records the launch, and says whether the notice is still owed.
+    let mut ask_consent = use_signal(|| false);
+    use_future(move || async move {
+        if crate::telemetry::start().await {
+            ask_consent.set(true);
+        }
+        crate::telemetry::flush_forever().await;
+    });
+    // Recorded while the notice is on screen, so collection starts from the
+    // next event — never from one the person had no chance to read about.
+    use_effect(move || {
+        if ask_consent() {
+            crate::telemetry::mark_informed();
+        }
+    });
+
     let has_project = config.read().project_path.is_some();
 
     rsx! {
         style { {include_str!("../assets/main.css")} }
+        // Usage-statistics notice: once, along the bottom edge. Either button
+        // is remembered.
+        if ask_consent() {
+            div { class: "consent-banner",
+                span { class: "consent-banner-text",
+                    strong { "Blog Toolkit shares anonymous usage statistics. " }
+                    "Whether it is installed and opened, and its version and operating system \
+                     — never your posts, files, keys or anything you type."
+                }
+                button {
+                    class: "consent-banner-button",
+                    onclick: move |_| {
+                        crate::telemetry::set_consent(true);
+                        ask_consent.set(false);
+                    },
+                    "OK"
+                }
+                button {
+                    class: "consent-banner-button",
+                    onclick: move |_| {
+                        crate::telemetry::set_consent(false);
+                        ask_consent.set(false);
+                    },
+                    "Turn off"
+                }
+            }
+        }
         if has_project {
             MainLayout { config, posts, selected, editor_mode, show_settings, content_mode, li_selected, is_light }
         } else {

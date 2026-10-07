@@ -34,6 +34,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 UninstallDisplayName={#MyAppName} {#MyAppVersion}
 CloseApplications=yes
+; Shows the licence (PolyForm Noncommercial) as a page the user accepts before installing.
+LicenseFile=..\LICENSE
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

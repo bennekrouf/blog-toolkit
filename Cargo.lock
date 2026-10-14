@@ -409,29 +409,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blog-toolkit"
-version = "0.1.10"
-dependencies = [
- "anyhow",
- "base64",
- "chrono",
- "dioxus",
- "directories",
- "dirs",
- "dotenv",
- "getrandom 0.3.4",
- "pulldown-cmark",
- "reqwest",
- "rfd 0.15.4",
- "serde",
- "serde_json",
- "serde_yaml",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "built"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3889,6 +3866,29 @@ checksum = "4488a4a36b9a4ba6b9334a32a39971f77c1436ec82c38707bce707699cc3bbcb"
 dependencies = [
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "publishkit"
+version = "0.1.10"
+dependencies = [
+ "anyhow",
+ "base64",
+ "chrono",
+ "dioxus",
+ "directories",
+ "dirs",
+ "dotenv",
+ "getrandom 0.3.4",
+ "pulldown-cmark",
+ "reqwest",
+ "rfd 0.15.4",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

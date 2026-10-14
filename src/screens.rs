@@ -61,7 +61,7 @@ pub fn App() -> Element {
         if ask_consent() {
             div { class: "consent-banner",
                 span { class: "consent-banner-text",
-                    strong { "Blog Toolkit shares anonymous usage statistics. " }
+                    strong { "PublishKit shares anonymous usage statistics. " }
                     "Whether it is installed and opened, and its version and operating system \
                      — never your posts, files, keys or anything you type."
                 }

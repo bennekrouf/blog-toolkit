@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-mac.sh — one-time setup for blog-toolkit on macOS
+# setup-mac.sh — one-time setup for publishkit on macOS
 #
 # Installs: Node.js 20 (needed by generate-blog-data.js when publishing posts)
 # WebKit is built into macOS — no separate install needed.
@@ -42,12 +42,12 @@ fi
 
 # ── Verify the binary ─────────────────────────────────────────────────────────
 BINARY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$BINARY_DIR/blog-toolkit" ]]; then
-    ok "blog-toolkit binary found: $BINARY_DIR/blog-toolkit"
+if [[ -f "$BINARY_DIR/publishkit" ]]; then
+    ok "publishkit binary found: $BINARY_DIR/publishkit"
 else
-    warn "blog-toolkit binary not found in $BINARY_DIR — move it here before running."
+    warn "publishkit binary not found in $BINARY_DIR — move it here before running."
 fi
 
 echo ""
 echo "Setup complete."
-echo "Run: $BINARY_DIR/blog-toolkit"
+echo "Run: $BINARY_DIR/publishkit"

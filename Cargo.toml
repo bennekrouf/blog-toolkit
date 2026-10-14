@@ -1,5 +1,5 @@
 [package]
-name = "blog-toolkit"
+name = "publishkit"
 version = "0.1.10"
 edition = "2021"
 license-file = "LICENSE"

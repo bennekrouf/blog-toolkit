@@ -1,10 +1,10 @@
-# Blog Toolkit
+# PublishKit
 
 ## Release notes
 
-Every change a user of Blog Toolkit could notice gets a note in
+Every change a user of PublishKit could notice gets a note in
 `CHANGELOG.md`, in the same PR as the change. The notes are published as-is
-at <https://mayorana.ch/en/apps/blog-toolkit/releases> and in the GitHub
+at <https://mayorana.ch/en/apps/publishkit/releases> and in the GitHub
 Release body.
 
 - Add bullets under `## [Unreleased]`, grouped under `### Added`, `### Changed`,

@@ -94,6 +94,8 @@ impl Default for AppConfig {
 
 impl AppConfig {
     pub fn config_path() -> PathBuf {
+        // Still the old name: the API keys are saved here, and the last rename
+        // (Blog Manager → Blog Toolkit) lost them by moving it.
         directories::ProjectDirs::from("com", "mayorana", "blog-toolkit")
             .map(|d| d.config_dir().to_path_buf())
             .unwrap_or_else(|| PathBuf::from("."))
@@ -139,7 +141,7 @@ pub struct ContentPaths {
     pub langs: HashMap<String, LangPaths>,
 }
 
-/// Per-project config loaded from `blog-toolkit.yaml` at the project root.
+/// Per-project config loaded from `publishkit.yaml` at the project root.
 /// If absent, defaults to Cvenom-style settings.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProjectConfig {
@@ -172,9 +174,22 @@ impl Default for ProjectConfig {
     }
 }
 
+/// The project's config file: `publishkit.yaml`, or `blog-toolkit.yaml` in a
+/// project set up before the app was renamed PublishKit. That file is kept
+/// rather than renamed: it sits in the person's own repository.
+fn config_path(project_path: &str) -> PathBuf {
+    let path = PathBuf::from(project_path).join("publishkit.yaml");
+    let legacy = PathBuf::from(project_path).join("blog-toolkit.yaml");
+    if !path.exists() && legacy.exists() {
+        legacy
+    } else {
+        path
+    }
+}
+
 impl ProjectConfig {
     pub fn load(project_path: &str) -> Self {
-        let path = PathBuf::from(project_path).join("blog-toolkit.yaml");
+        let path = config_path(project_path);
         let mut config: Self = std::fs::read_to_string(&path)
             .ok()
             .and_then(|s| serde_yaml::from_str(&s).ok())
@@ -193,7 +208,7 @@ impl ProjectConfig {
     }
 
     pub fn save(&self, project_path: &str) {
-        let path = PathBuf::from(project_path).join("blog-toolkit.yaml");
+        let path = config_path(project_path);
         if let Ok(yaml) = serde_yaml::to_string(self) {
             let _ = std::fs::write(path, yaml);
         }

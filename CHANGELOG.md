@@ -1,10 +1,10 @@
 # Changelog
 
-What changed in each release of **Blog Toolkit**, the desktop app for writing,
+What changed in each release of **PublishKit**, the desktop app for writing,
 queuing and publishing blog posts with DeepSeek or Claude.
 
 The public version of this page — with the download for each release — lives at
-<https://mayorana.ch/en/apps/blog-toolkit/releases>. It is generated from this
+<https://mayorana.ch/en/apps/publishkit/releases>. It is generated from this
 file by `scripts/changelog_to_json.py`, so this file is the only place a
 release note is written.
 
@@ -15,18 +15,28 @@ Each heading is dated on the day its tag was pushed. Releases that carried only
 build or packaging work say so rather than being hidden: the version numbers a
 user sees in the update prompt should all be accounted for.
 
+## [Unreleased]
+
+### Changed
+
+- Blog Toolkit is now called PublishKit. Your API keys and settings carry over.
+  A project's `blog-toolkit.yaml` is still read and kept where it is; new
+  projects get a `publishkit.yaml`. On macOS the update installs as
+  PublishKit.app; once it runs, you can delete Blog Toolkit.app from
+  Applications.
+
 ## [0.1.10] - 2026-10-07
 
 ### Changed
 
 - The installer now includes a license agreement, ensuring users are aware of
-  the terms before installing Blog Toolkit.
+  the terms before installing PublishKit.
 
 ## [0.1.9] - 2026-10-06
 
 ### Added
 
-- Blog Toolkit now shares anonymous usage statistics: whether it is installed and
+- PublishKit now shares anonymous usage statistics: whether it is installed and
   opened, its version and your operating system. It is on by default; a note at
   the bottom of the window tells you once, and nothing is sent before you have
   seen it. **Turn off** there stops it for good and deletes anything not yet
@@ -72,7 +82,7 @@ user sees in the update prompt should all be accounted for.
 ### Changed
 
 - Downloads now come from mayorana.ch instead of GitHub.
-- Blog Toolkit is source-available under the PolyForm Noncommercial licence:
+- PublishKit is source-available under the PolyForm Noncommercial licence:
   free for personal, educational and noncommercial use.
 
 ## [0.1.4] - 2026-05-22

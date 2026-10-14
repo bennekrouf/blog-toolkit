@@ -26,7 +26,7 @@
   --orange:     #e08a4a;
   --mono: 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 
-  /* aliases so blog-toolkit's original class names keep working */
+  /* aliases so publishkit's original class names keep working */
   --bg: var(--bg0);
   --surface: var(--bg1);
   --surface2: var(--bg2);

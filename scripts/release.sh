@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# release.sh — cut a blog-toolkit release
+# release.sh — cut a publishkit release
 #
 # After pushing the tag, GitHub Actions (release.yml) automatically:
 #   1. Builds macOS arm64, Linux x86_64, Windows installer
@@ -64,7 +64,7 @@ fi
 
 # ── Show plan ─────────────────────────────────────────────────────────────────
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Release plan — blog-toolkit"
+echo "  Release plan — publishkit"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Cargo.toml : $CARGO_VERSION → $NEW"
 if [[ "$CARGO_VERSION" != "$CURRENT" ]]; then

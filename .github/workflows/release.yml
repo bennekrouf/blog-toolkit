@@ -166,7 +166,7 @@ jobs:
         if: env.HAVE_MAC_SECRETS == 'true'
         run: |
           set -euo pipefail
-          BIN=target/aarch64-apple-darwin/release/blog-toolkit
+          BIN=target/aarch64-apple-darwin/release/publishkit
           codesign --force --options runtime --timestamp \
             --entitlements .github/macos-entitlements.plist \
             --sign "$SIGNING_IDENTITY" \
@@ -203,14 +203,14 @@ jobs:
         if: env.HAVE_MAC_SECRETS == 'true'
         run: |
           set -euo pipefail
-          BIN=target/aarch64-apple-darwin/release/blog-toolkit
+          BIN=target/aarch64-apple-darwin/release/publishkit
           VER="${GITHUB_REF_NAME#v}"
-          APP="dist/Blog Toolkit.app"
+          APP="dist/PublishKit.app"
 
           # 1. Construct the .app bundle around the cargo-built binary.
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-          cp "$BIN" "$APP/Contents/MacOS/blog-toolkit"
-          chmod +x "$APP/Contents/MacOS/blog-toolkit"
+          cp "$BIN" "$APP/Contents/MacOS/publishkit"
+          chmod +x "$APP/Contents/MacOS/publishkit"
 
           ICON_KEY=""
           if [ -f dist/icon.icns ]; then
@@ -222,10 +222,10 @@ jobs:
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
-            <key>CFBundleExecutable</key><string>blog-toolkit</string>
+            <key>CFBundleExecutable</key><string>publishkit</string>
             <key>CFBundleIdentifier</key><string>com.blog-toolkit.app</string>
-            <key>CFBundleName</key><string>Blog Toolkit</string>
-            <key>CFBundleDisplayName</key><string>Blog Toolkit</string>
+            <key>CFBundleName</key><string>PublishKit</string>
+            <key>CFBundleDisplayName</key><string>PublishKit</string>
             <key>CFBundlePackageType</key><string>APPL</string>
             <key>CFBundleShortVersionString</key><string>$VER</string>
             <key>CFBundleVersion</key><string>$VER</string>
@@ -252,25 +252,25 @@ jobs:
           cp scripts/setup-mac.sh dmg-staging/
           cp README.md dmg-staging/
           chmod +x dmg-staging/setup-mac.sh
-          hdiutil create -volname "Blog Toolkit" -srcfolder dmg-staging \
-            -ov -format UDZO dist/blog-toolkit-macos-arm64.dmg
+          hdiutil create -volname "PublishKit" -srcfolder dmg-staging \
+            -ov -format UDZO dist/publishkit-macos-arm64.dmg
           codesign --force --timestamp --sign "$SIGNING_IDENTITY" \
-            dist/blog-toolkit-macos-arm64.dmg
+            dist/publishkit-macos-arm64.dmg
 
           # 4. Notarize the DMG (covers the binary inside via hash) and staple.
           P8="$RUNNER_TEMP/AuthKey_${APP_STORE_KEY_ID}.p8"
           echo "$APP_STORE_KEY" | base64 --decode > "$P8"
 
-          xcrun notarytool submit dist/blog-toolkit-macos-arm64.dmg \
+          xcrun notarytool submit dist/publishkit-macos-arm64.dmg \
             --key "$P8" \
             --key-id "$APP_STORE_KEY_ID" \
             --issuer "$APP_STORE_ISSUER_ID" \
             --wait
-          xcrun stapler staple dist/blog-toolkit-macos-arm64.dmg
-          xcrun stapler validate dist/blog-toolkit-macos-arm64.dmg
+          xcrun stapler staple dist/publishkit-macos-arm64.dmg
+          xcrun stapler validate dist/publishkit-macos-arm64.dmg
 
-          shasum -a 256 dist/blog-toolkit-macos-arm64.dmg \
-            > dist/blog-toolkit-macos-arm64.dmg.sha256
+          shasum -a 256 dist/publishkit-macos-arm64.dmg \
+            > dist/publishkit-macos-arm64.dmg.sha256
 
       - name: Clean up keychain
         if: always() && env.HAVE_MAC_SECRETS == 'true'
@@ -281,10 +281,10 @@ jobs:
         if: env.HAVE_MAC_SECRETS == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: blog-toolkit-macos-arm64
+          name: publishkit-macos-arm64
           path: |
-            dist/blog-toolkit-macos-arm64.dmg
-            dist/blog-toolkit-macos-arm64.dmg.sha256
+            dist/publishkit-macos-arm64.dmg
+            dist/publishkit-macos-arm64.dmg.sha256
 
   build-linux:
     needs: [prepare]
@@ -325,22 +325,22 @@ jobs:
 
       - name: Package tar.gz
         run: |
-          NAME="blog-toolkit-linux-x86_64"
+          NAME="publishkit-linux-x86_64"
           DIST="dist/$NAME"
           mkdir -p "$DIST"
-          cp target/x86_64-unknown-linux-gnu/release/blog-toolkit "$DIST/"
+          cp target/x86_64-unknown-linux-gnu/release/publishkit "$DIST/"
           cp scripts/setup-linux.sh "$DIST/"
           cp README.md "$DIST/"
-          chmod +x "$DIST/setup-linux.sh" "$DIST/blog-toolkit"
+          chmod +x "$DIST/setup-linux.sh" "$DIST/publishkit"
           tar -czf "$NAME.tar.gz" -C dist "$NAME"
           sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: blog-toolkit-linux-x86_64
+          name: publishkit-linux-x86_64
           path: |
-            blog-toolkit-linux-x86_64.tar.gz
-            blog-toolkit-linux-x86_64.tar.gz.sha256
+            publishkit-linux-x86_64.tar.gz
+            publishkit-linux-x86_64.tar.gz.sha256
 
   # ── Windows x64 ────────────────────────────────────────────────────────────
   build-windows:
@@ -467,17 +467,17 @@ jobs:
       - name: Checksum installer
         shell: pwsh
         run: |
-          $exe = "blog-toolkit-setup.exe"
+          $exe = "publishkit-setup.exe"
           $hash = (Get-FileHash "dist\$exe" -Algorithm SHA256).Hash.ToLower()
           "$hash  $exe" | Out-File "dist\$exe.sha256" -Encoding ASCII
           Write-Host "Installer: dist\$exe ($([math]::Round((Get-Item "dist\$exe").Length/1MB,1)) MB)"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: blog-toolkit-windows
+          name: publishkit-windows
           path: |
-            dist\blog-toolkit-setup.exe
-            dist\blog-toolkit-setup.exe.sha256
+            dist\publishkit-setup.exe
+            dist\publishkit-setup.exe.sha256
 
   # ── GitHub Release ─────────────────────────────────────────────────────────
   release:
@@ -524,18 +524,18 @@ jobs:
           # Versioned, immutable URLs — the same paths the publish step below
           # rsyncs to. Override with the DOWNLOAD_BASE_URL repo variable if the
           # download host ever moves.
-          BASE="${DL_BASE:-https://mayorana.ch/downloads/blog-toolkit}"
+          BASE="${DL_BASE:-https://mayorana.ch/downloads/publishkit}"
           BASE="${BASE%/}/$TAG"
 
-          MAC_DMG="blog-toolkit-macos-arm64.dmg"
-          WIN_EXE="blog-toolkit-setup.exe"
-          LINUX_TGZ="blog-toolkit-linux-x86_64.tar.gz"
+          MAC_DMG="publishkit-macos-arm64.dmg"
+          WIN_EXE="publishkit-setup.exe"
+          LINUX_TGZ="publishkit-linux-x86_64.tar.gz"
 
           sha() { [ -n "$1" ] && [ -f "release/$1" ] && sha256sum "release/$1" | awk '{print $1}' || echo ""; }
 
           cat > release/latest.json <<EOF
           {
-            "name": "blog-toolkit",
+            "name": "publishkit",
             "version": "$VER",
             "tag": "$TAG",
             "released_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
@@ -550,7 +550,7 @@ jobs:
 
       # ── Release notes feed ─────────────────────────────────────────────────
       # CHANGELOG.md is the only place a release note is written. This turns it
-      # into the feed the website renders at /apps/blog-toolkit/releases, and ships
+      # into the feed the website renders at /apps/publishkit/releases, and ships
       # it beside the builds rather than on the source host, for the same reason
       # latest.json lives there.
       #
@@ -574,23 +574,23 @@ jobs:
                  --date "$(date -u +%Y-%m-%d)" \
                  > release/releases.json; then
             echo "::warning::Could not build releases.json from CHANGELOG.md — keeping the published feed."
-            curl -fsS "https://mayorana.ch/downloads/blog-toolkit/latest/releases.json" \
+            curl -fsS "https://mayorana.ch/downloads/publishkit/latest/releases.json" \
                  -o release/releases.json \
-              || echo '{"name":"blog-toolkit","releases":[]}' > release/releases.json
+              || echo '{"name":"publishkit","releases":[]}' > release/releases.json
           fi
           python3 -c "import json; d=json.load(open('release/releases.json')); print(len(d['releases']), 'releases, newest', d['releases'][0]['version'] if d['releases'] else 'none')"
 
       # ── Publish the signed artifacts to mayorana.ch ────────────────────────
       # The binaries are the product and no longer ride on the public GitHub
       # Release. nginx on the VPS serves them straight off disk from
-      #   /var/www/mayorana-downloads/blog-toolkit/{<tag>,latest}/
+      #   /var/www/mayorana-downloads/publishkit/{<tag>,latest}/
       #
       # `latest/` is synced with --delete so it always matches exactly this
       # release: when a platform fails to build, its download 404s instead of
       # quietly serving the previous version under this version's checksum.
       #
       # No mkdir over ssh: the deploy key is confined with rrsync and gets no
-      # shell. rsync creates the final path component, and <root>/blog-toolkit
+      # shell. rsync creates the final path component, and <root>/publishkit
       # already exists on the server.
       #
       # Unset secrets = skip with a warning, so a fork or an unconfigured
@@ -624,7 +624,7 @@ jobs:
             exit 1
           fi
 
-          ROOT="${DEST_ROOT:-}/blog-toolkit"
+          ROOT="${DEST_ROOT:-}/publishkit"
 
           install -m 700 -d ~/.ssh
           trap 'rm -f ~/.ssh/dist_key' EXIT
@@ -666,7 +666,7 @@ jobs:
           if [ -n "$CHANGES" ]; then
             printf "## What's new in %s\n\n%s\n\n" "$TAG" "$CHANGES" >> notes.md
           fi
-          printf '%s\n\n' "Every version, with its notes: **[mayorana.ch/en/apps/blog-toolkit/releases](https://mayorana.ch/en/apps/blog-toolkit/releases)**" >> notes.md
+          printf '%s\n\n' "Every version, with its notes: **[mayorana.ch/en/apps/publishkit/releases](https://mayorana.ch/en/apps/publishkit/releases)**" >> notes.md
 
           # The standing download instructions, appended below whatever this
           # release changed. Quoted heredoc: the shell must not touch the
@@ -675,21 +675,21 @@ jobs:
           ## Installation
 
           ### macOS (Apple Silicon)
-          Download **blog-toolkit-macos-arm64.dmg**, open it, and drag **Blog Toolkit** to Applications.
+          Download **publishkit-macos-arm64.dmg**, open it, and drag **PublishKit** to Applications.
           Signed with Apple Developer ID and notarized — opens with a normal double-click.
 
           Publishing shells out to Node.js. If you do not already have Node 18+, run the
           `setup-mac.sh` included in the disk image once.
 
           ### Windows
-          Download **blog-toolkit-setup.exe** and run it — the installer handles Node.js and WebView2.
+          Download **publishkit-setup.exe** and run it — the installer handles Node.js and WebView2.
 
           ### Linux (x86_64)
           ```bash
-          curl -L https://mayorana.ch/downloads/blog-toolkit/${{ needs.prepare.outputs.tag || github.ref_name }}/blog-toolkit-linux-x86_64.tar.gz | tar xz
-          cd blog-toolkit-linux-x86_64
+          curl -L https://mayorana.ch/downloads/publishkit/${{ needs.prepare.outputs.tag || github.ref_name }}/publishkit-linux-x86_64.tar.gz | tar xz
+          cd publishkit-linux-x86_64
           sudo ./setup-linux.sh
-          ./blog-toolkit
+          ./publishkit
           ```
 
           > **Runtime requirement (Linux):** `libwebkit2gtk-4.1` — installed automatically by `setup-linux.sh`.
@@ -697,7 +697,7 @@ jobs:
           EOF
 
           gh release create "$TAG" \
-            --title "blog-toolkit $TAG" \
+            --title "publishkit $TAG" \
             --notes-file notes.md \
             release/latest.json \
             release/releases.json

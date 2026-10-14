@@ -9,21 +9,21 @@ Built with [Dioxus](https://dioxuslabs.com/) (Rust, runs natively on macOS, Linu
 ## Installation
 
 ### macOS (Apple Silicon)
-Download [`blog-toolkit-macos-arm64.dmg`](https://mayorana.ch/downloads/blog-toolkit/latest/blog-toolkit-macos-arm64.dmg), open it, and drag **Blog Toolkit** to Applications.
+Download [`publishkit-macos-arm64.dmg`](https://mayorana.ch/downloads/publishkit/latest/publishkit-macos-arm64.dmg), open it, and drag **PublishKit** to Applications.
 Signed with Apple Developer ID and notarized — opens with a normal double-click.
 
 Publishing shells out to Node.js. If you do not already have Node 18+, run the
 `setup-mac.sh` included in the disk image once.
 
 ### Windows
-Download **blog-toolkit-setup.exe** from the [latest release](https://github.com/Bennekrouf/blog-toolkit/releases/latest) and run it. The installer handles Node.js and WebView2 automatically.
+Download **publishkit-setup.exe** from the [latest release](https://github.com/Bennekrouf/publishkit/releases/latest) and run it. The installer handles Node.js and WebView2 automatically.
 
 ### Linux (x86_64)
 ```bash
-curl -L https://mayorana.ch/downloads/blog-toolkit/latest/blog-toolkit-linux-x86_64.tar.gz | tar xz
-cd blog-toolkit-linux-x86_64
+curl -L https://mayorana.ch/downloads/publishkit/latest/publishkit-linux-x86_64.tar.gz | tar xz
+cd publishkit-linux-x86_64
 sudo ./setup-linux.sh
-./blog-toolkit
+./publishkit
 ```
 
 > **Runtime requirement (Linux):** `libwebkit2gtk-4.1` — installed automatically by `setup-linux.sh` on Debian/Ubuntu, Fedora, and Arch.
@@ -86,7 +86,7 @@ Click the **⚙** gear icon in the top bar to open Settings.
 | DeepSeek | `deepseek-chat` | `DEEPSEEK_API_KEY` |
 | Claude | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` |
 
-You can paste the key directly in Settings (stored in `~/.config/blog-toolkit/config.json`) or leave the field empty and set the environment variable instead. The app checks the env var automatically if no key is saved.
+You can paste the key directly in Settings (stored in `~/.config/publishkit/config.json`) or leave the field empty and set the environment variable instead. The app checks the env var automatically if no key is saved.
 
 ---
 
@@ -121,7 +121,7 @@ tail -f ~/Library/Logs/cvenom-blog-publish.log
 ### Run in dev mode
 
 ```bash
-cd blog-toolkit
+cd publishkit
 DEEPSEEK_API_KEY=sk-... dx serve --platform desktop
 ```
 
@@ -129,7 +129,7 @@ DEEPSEEK_API_KEY=sk-... dx serve --platform desktop
 
 ```bash
 cargo build --release
-# binary: target/release/blog-toolkit
+# binary: target/release/publishkit
 ```
 
 ### Cut a release

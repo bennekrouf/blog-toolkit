@@ -93,6 +93,20 @@ fi
 # ── Desktop shortcut ──────────────────────────────────────────────────────────
 BINARY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESKTOP_FILE="/usr/share/applications/publishkit.desktop"
+
+# Register the bundled icon with the hicolor theme so launchers pick it up.
+# Falls back to the generic editor glyph if the PNG isn't shipped.
+ICON_NAME="text-editor"
+if [[ -f "$BINARY_DIR/icon.png" ]]; then
+  ICON_DIR="/usr/share/icons/hicolor/256x256/apps"
+  install -Dm644 "$BINARY_DIR/icon.png" "$ICON_DIR/publishkit.png"
+  if command -v gtk-update-icon-cache &>/dev/null; then
+    gtk-update-icon-cache -q -t /usr/share/icons/hicolor || true
+  fi
+  ICON_NAME="publishkit"
+  ok "Icon installed to $ICON_DIR/publishkit.png"
+fi
+
 if [[ -f "$BINARY_DIR/publishkit" && ! -f "$DESKTOP_FILE" ]]; then
   info "Creating .desktop launcher..."
   cat > "$DESKTOP_FILE" <<EOF
@@ -100,7 +114,7 @@ if [[ -f "$BINARY_DIR/publishkit" && ! -f "$DESKTOP_FILE" ]]; then
 Name=Blog Manager
 Comment=Blog post queue manager for Cvenom
 Exec=$BINARY_DIR/publishkit
-Icon=text-editor
+Icon=$ICON_NAME
 Terminal=false
 Type=Application
 Categories=Office;

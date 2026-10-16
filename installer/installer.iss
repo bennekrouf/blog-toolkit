@@ -36,6 +36,12 @@ UninstallDisplayName={#MyAppName} {#MyAppVersion}
 CloseApplications=yes
 ; Shows the licence (PolyForm Noncommercial) as a page the user accepts before installing.
 LicenseFile=..\LICENSE
+; Branding — uses assets\icon.ico if present (the release workflow makes it
+; from assets\icon.png). Skipped silently otherwise.
+#if FileExists(AddBackslash(SourcePath) + "..\assets\icon.ico")
+SetupIconFile=..\assets\icon.ico
+UninstallDisplayIcon={app}\icon.ico
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -55,6 +61,11 @@ Source: "..\target\release\publishkit.exe";   DestDir: "{app}"; Flags: ignorever
 Source: "..\target\release\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists('..\target\release\WebView2Loader.dll')
 Source: "..\scripts\setup-windows.ps1";         DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md";                         DestDir: "{app}"; Flags: ignoreversion isreadme
+#if FileExists(AddBackslash(SourcePath) + "..\assets\icon.ico")
+; Shortcuts point at the .ico explicitly: some Windows builds fail to extract
+; the icon embedded in the .exe for shortcut display.
+Source: "..\assets\icon.ico";                   DestDir: "{app}"; Flags: ignoreversion
+#endif
 
 [Icons]
 Name: "{group}\{#MyAppName}";           Filename: "{app}\{#MyAppExeName}"

@@ -332,6 +332,14 @@ jobs:
           cp scripts/setup-linux.sh "$DIST/"
           cp README.md "$DIST/"
           chmod +x "$DIST/setup-linux.sh" "$DIST/publishkit"
+          # Bundle the icon so setup-linux.sh can register it with the
+          # hicolor theme and the .desktop entry shows branding instead
+          # of a generic glyph.
+          if [ -f assets/icon.png ]; then
+            cp assets/icon.png "$DIST/icon.png"
+          else
+            echo "::warning::assets/icon.png not found — Linux tarball will ship without an icon."
+          fi
           tar -czf "$NAME.tar.gz" -C dist "$NAME"
           sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
 
@@ -361,6 +369,18 @@ jobs:
             ~/.cargo/git
             target
           key: release-windows-${{ hashFiles('Cargo.lock') }}
+
+      # ── Generate assets/icon.ico from assets/icon.png (ImageMagick is
+      # preinstalled on windows-latest as `magick`). No-op if PNG missing;
+      # build.rs already handles that case with a cargo:warning.
+      - name: Generate Windows .ico
+        shell: pwsh
+        run: |
+          if (Test-Path assets/icon.png) {
+            magick assets/icon.png -define icon:auto-resize=16,24,32,48,64,128,256 assets/icon.ico
+          } else {
+            Write-Host "::warning::assets/icon.png not found — .exe will ship without an embedded icon."
+          }
 
       - name: Build
         env:
